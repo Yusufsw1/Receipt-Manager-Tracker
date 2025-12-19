@@ -17,6 +17,8 @@ import { ScanLine, Loader2, CheckCircle, Upload, Camera, FileImage, X, Edit2, Sa
 
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { cleanjson } from "@/lib/parsejson";
+import Image from "next/image";
+import { Receipt } from "@/app/types/receipt";
 
 interface Props {
   userId: string;
@@ -86,10 +88,6 @@ export default function ReceiptModal({ userId, isOpen, onClose, onSuccess }: Pro
     onClose();
   };
 
-  const triggerCamera = () => {
-    cameraInputRef.current?.click();
-  };
-
   const triggerGallery = () => {
     fileInputRef.current?.click();
   };
@@ -135,11 +133,11 @@ export default function ReceiptModal({ userId, isOpen, onClose, onSuccess }: Pro
     try {
       await simulateProcessing();
 
-      // 1. Upload to Supabase Storage
-      const fileName = `${Date.now()}_${file.name}`;
-      const { data, error } = await supabase.storage.from("receipts").upload(fileName, file);
+      // 1. Upload ke Supabase Storage
+      const fileName = `${Date.now()}_${file.name.replace(/\s+/g, "_")}`; // Bersihkan nama file
+      const { data, error: uploadError } = await supabase.storage.from("receipts").upload(fileName, file);
 
-      if (error) throw error;
+      if (uploadError) throw uploadError;
 
       const url = supabase.storage.from("receipts").getPublicUrl(data.path).data.publicUrl;
       setFileUrl(url);
@@ -148,64 +146,69 @@ export default function ReceiptModal({ userId, isOpen, onClose, onSuccess }: Pro
       const formData = new FormData();
       formData.append("file", file);
 
-      const ocrResponse = await fetch("/api/ocr", {
-        method: "POST",
-        body: formData,
-      });
+      const ocrResponse = await fetch("/api/ocr", { method: "POST", body: formData });
+      if (!ocrResponse.ok) throw new Error("OCR service failed");
+
       const ocrData = await ocrResponse.json();
       const rawText: string = ocrData.text ?? "";
       setOcrText(rawText);
 
-      // 3. Extract structured data
+      // 3. Extract structured data via AI
       const extractResponse = await fetch("/api/extract-details", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ocrText: rawText }),
       });
+
+      if (!extractResponse.ok) throw new Error("AI Extraction failed");
+
       const extractData = await extractResponse.json();
       const jsonRaw = extractData.json || extractData;
-      setAiJsonText(jsonRaw);
+      setAiJsonText(typeof jsonRaw === "string" ? jsonRaw : JSON.stringify(jsonRaw));
 
-      let parsed: any = null;
+      // 4. Parsing JSON dengan Type Safety
+      let parsed: Partial<Receipt>; // Menggunakan Partial agar aman
       try {
-        parsed = JSON.parse(cleanjson(jsonRaw));
-      } catch (e) {
-        parsed = {
-          merchant_name: "",
-          date: "",
-          total_amount: "",
-          line_items: [],
-          category: "",
-          notes: "",
-        };
+        const cleaned = typeof jsonRaw === "string" ? cleanjson(jsonRaw) : JSON.stringify(jsonRaw);
+        parsed = JSON.parse(cleaned);
+      } catch {
+        console.warn("Failed to parse AI JSON, using empty template");
+        parsed = {};
       }
 
+      // 5. Update State dengan Fallback yang Aman
       setMerchant(parsed.merchant_name ?? "");
-      // Format date if it exists
+
+      // Logika Tanggal yang disederhanakan
       if (parsed.date) {
-        try {
-          const dateObj = new Date(parsed.date);
-          if (!isNaN(dateObj.getTime())) {
-            setDate(dateObj.toISOString().split("T")[0]);
-          } else {
-            setDate(parsed.date ?? "");
-          }
-        } catch {
-          setDate(parsed.date ?? "");
-        }
+        const dateObj = new Date(parsed.date);
+        setDate(!isNaN(dateObj.getTime()) ? dateObj.toISOString().split("T")[0] : "");
       } else {
-        setDate("");
+        setDate(new Date().toISOString().split("T")[0]); // Default ke hari ini jika gagal
       }
 
-      setTotal(parsed.total_amount);
+      // Pastikan total_amount adalah angka
+      const rawTotal = parsed.total_amount;
+      let finalTotal = 0;
+      if (typeof rawTotal === "string") {
+        // Paksa sebagai string agar bisa menggunakan .replace()
+        const cleanString = (rawTotal as string).replace(/[^0-9.-]+/g, "");
+        finalTotal = parseFloat(cleanString) || 0;
+      } else if (typeof rawTotal === "number") {
+        finalTotal = rawTotal;
+      }
+
+      setTotal(finalTotal);
+
       setLineItems(Array.isArray(parsed.line_items) ? parsed.line_items : []);
-      setCategory(parsed.category);
+      setCategory(parsed.category ?? "Food");
       setNotes(parsed.notes ?? "");
 
       setModalStep("review");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Processing error:", error);
-      alert(`Processing failed: ${error.message || "Unknown error"}`);
+      const msg = error instanceof Error ? error.message : "Terjadi kesalahan sistem";
+      alert(`Processing failed: ${msg}`);
       setModalStep("upload");
     } finally {
       setLoading(false);
@@ -237,9 +240,13 @@ export default function ReceiptModal({ userId, isOpen, onClose, onSuccess }: Pro
 
       setModalStep("success");
       onSuccess?.();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Save failed:", error);
-      alert(`Save failed: ${error.message || "Unknown error"}`);
+
+      // Cek apakah error adalah objek Error standar
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+      alert(`Save failed: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -257,8 +264,6 @@ export default function ReceiptModal({ userId, isOpen, onClose, onSuccess }: Pro
       total_amount: totalAmount,
       date: date,
       category,
-      // created_at: date ? new Date(date).toISOString() : new Date().toISOString(),
-      // optional fields
     });
 
     if (!error) {
@@ -272,7 +277,7 @@ export default function ReceiptModal({ userId, isOpen, onClose, onSuccess }: Pro
   // Line item helpers
   const addLineItem = () => setLineItems([...lineItems, { name: "", price: 0, quantity: 0 }]);
 
-  const updateLineItem = (idx: number, field: keyof LineItem, value: any) => {
+  const updateLineItem = (idx: number, field: keyof LineItem, value: string | number) => {
     const newItems = [...lineItems];
     newItems[idx] = {
       ...newItems[idx],
@@ -291,6 +296,9 @@ export default function ReceiptModal({ userId, isOpen, onClose, onSuccess }: Pro
 
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Tambah Pengeluaran</DialogTitle>
+          </DialogHeader>
           {/* Step 1: Upload */}
           {modalStep === "upload" && (
             <>
@@ -326,8 +334,15 @@ export default function ReceiptModal({ userId, isOpen, onClose, onSuccess }: Pro
                           <CardTitle className="text-sm">Preview</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="relative h-48 overflow-hidden rounded-lg bg-muted">
-                            <img src={previewUrl} alt="Receipt preview" className="object-contain w-full h-full" />
+                          <div className="relative w-full h-48 overflow-hidden border rounded-lg bg-muted">
+                            <Image
+                              src={previewUrl}
+                              alt="Receipt preview"
+                              fill
+                              unoptimized // Tambahkan ini khusus untuk blob/preview URL
+                              className="object-contain"
+                              priority // Agar preview muncul instan saat dipilih
+                            />
                           </div>
                           <div className="flex gap-2 mt-3">
                             <Button onClick={() => setPreviewUrl("")} variant="outline" size="sm" className="flex-1">
@@ -458,8 +473,8 @@ export default function ReceiptModal({ userId, isOpen, onClose, onSuccess }: Pro
                   </CardHeader>
                   <CardContent>
                     {fileUrl && (
-                      <div className="relative h-48 mb-4 overflow-hidden rounded-lg bg-muted">
-                        <img src={fileUrl} alt="Receipt" className="object-contain w-full h-full" />
+                      <div className="relative h-48 mb-4 overflow-hidden border rounded-lg bg-muted">
+                        <Image src={fileUrl} alt="Receipt" fill className="object-contain p-2" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
                       </div>
                     )}
                   </CardContent>
@@ -496,7 +511,7 @@ export default function ReceiptModal({ userId, isOpen, onClose, onSuccess }: Pro
                         </Label>
                         <div className="relative">
                           <span className="absolute left-3 top-3 text-muted-foreground">Rp</span>
-                          <Input id="total" type="number" step="0.01" value={total as any} onChange={(e) => setTotal(e.target.value === "" ? "" : Number(e.target.value))} className="pl-8" placeholder="0.00" />
+                          <Input id="total" type="number" step="0.01" value={total} onChange={(e) => setTotal(e.target.value === "" ? "" : Number(e.target.value))} className="pl-8" placeholder="0.00" />
                         </div>
                       </div>
 
@@ -548,7 +563,7 @@ export default function ReceiptModal({ userId, isOpen, onClose, onSuccess }: Pro
                                 step="0.01"
                                 className="w-full p-2 pl-8 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                 placeholder="Price"
-                                value={item.price as any}
+                                value={item.price}
                                 onChange={(e) => updateLineItem(idx, "price", e.target.value)}
                               />
                             </div>
@@ -734,7 +749,7 @@ export default function ReceiptModal({ userId, isOpen, onClose, onSuccess }: Pro
                             step="0.01"
                             className="w-full p-2 pl-8 border border-gray-300 rounded outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Price"
-                            value={item.price as any}
+                            value={item.price}
                             onChange={(e) => updateLineItem(idx, "price", e.target.value)}
                           />
                         </div>

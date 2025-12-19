@@ -1,4 +1,5 @@
 import { createServerSupabase } from "@/lib/supabase/server";
+import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
   const supabase = createServerSupabase();
@@ -22,7 +23,7 @@ export async function GET(request: Request) {
 
   query = query.order("created_at", { ascending: false });
 
-  const { data: receipts, error } = await query;
+  const { data: receipts } = await query;
 
   return NextResponse.json({ receipts });
 }

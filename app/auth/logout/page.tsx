@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 export default function LogoutPage() {
   useEffect(() => {
     const logout = async () => {
-      const supabase = createClient();
+      const supabase = createSupabaseBrowser();
       await supabase.auth.signOut();
 
       // Clear storage
@@ -20,9 +20,9 @@ export default function LogoutPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <div className="w-12 h-12 mx-auto mb-4 border-b-2 border-blue-600 rounded-full animate-spin"></div>
         <p className="text-gray-600">Logging out...</p>
       </div>
     </div>

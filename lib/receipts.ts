@@ -1,8 +1,8 @@
 // lib/receipts.ts
-import { createClient } from "@/lib/supabase/client";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 export async function uploadAndProcessReceipt(file: File) {
-  const supabase = createClient();
+  const supabase = createSupabaseBrowser();
 
   try {
     // 1. Get user session
@@ -37,7 +37,7 @@ export async function uploadAndProcessReceipt(file: File) {
 }
 
 export async function getReceiptById(receiptId: string) {
-  const supabase = createClient();
+  const supabase = createSupabaseBrowser();
   const { data, error } = await supabase.from("receipts").select("*").eq("id", receiptId).single();
 
   if (error) throw error;

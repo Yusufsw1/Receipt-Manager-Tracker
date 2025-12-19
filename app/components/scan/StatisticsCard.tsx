@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { useEffect, useState } from "react";
 import { Receipt } from "@/app/types/receipt";
 import { Input } from "../ui/input";
-import { Button } from "../ui/button";
 
 export default function StatisticCard() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -26,24 +25,13 @@ export default function StatisticCard() {
     fetchReceipts();
   }, []);
 
-  const filteredReceipts = receipts.filter((r) => {
-    const created = new Date(r.created_at);
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
-
-    if (start && created < start) return false;
-    if (end && created > end) return false;
-
-    return true;
-  });
-
   const totalSpent = receipts.reduce((sum, r) => sum + (r.total_amount || 0), 0);
   const receiptCount = receipts.length;
   const avgAmount = receiptCount > 0 ? totalSpent / receiptCount : 0;
   const uniqueCategories = new Set(receipts.map((r) => r.category)).size;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       {/* total receipts */}
       <div className="flex items-center gap-3">
         <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-[150px]" />
@@ -55,7 +43,7 @@ export default function StatisticCard() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium">Total Receipts</CardTitle>
-          <FileText className="h-4 w-4 text-muted-foreground" />
+          <FileText className="w-4 h-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{receiptCount}</div>
@@ -67,7 +55,7 @@ export default function StatisticCard() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <DollarSign className="w-4 h-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">Rp.{totalSpent ? totalSpent.toLocaleString() : "—"}</div>
@@ -79,7 +67,7 @@ export default function StatisticCard() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium">Categories</CardTitle>
-          <Tag className="h-4 w-4 text-muted-foreground" />
+          <Tag className="w-4 h-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{uniqueCategories}</div>

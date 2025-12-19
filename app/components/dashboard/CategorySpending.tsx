@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
-import { MoreVertical, TrendingUp, TrendingDown, Edit2, Check, X } from "lucide-react";
+import { TrendingUp, TrendingDown, Edit2, Check, X } from "lucide-react";
 import { formatShortNumber } from "@/lib/formatNumber";
 
 type CategoryBudgetRow = {
@@ -86,9 +86,9 @@ export default function CategorySpending({ startDate, endDate }: Props) {
           setReceipts((receiptsData as ReceiptRow[]) || []);
           setBudgets((budgetRows as CategoryBudgetRow[]) || []);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("CategorySpending load error:", err);
-        if (mounted) setErrorMsg(err.message || "Failed to load category data.");
+        if (mounted) setErrorMsg((err as Error).message || "Failed to load category data.");
       } finally {
         if (mounted) setLoading(false);
       }
@@ -119,7 +119,7 @@ export default function CategorySpending({ startDate, endDate }: Props) {
     budgets.forEach((b) => keys.add(b.category));
     Object.keys(defaultUI).forEach((k) => keys.add(k));
 
-    const { data: userData } = supabase.auth.getUser(); // returns Promise-like object here but okay to check later
+    // const { data: userData } = supabase.auth.getUser(); // returns Promise-like object here but okay to check later
 
     const arr = Array.from(keys).map((cat) => {
       const budgetRow = budgets.find((b) => b.category === cat);
@@ -138,7 +138,6 @@ export default function CategorySpending({ startDate, endDate }: Props) {
     // sort by amount desc
     arr.sort((a, b) => b.amount - a.amount);
     return arr;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grouped, budgets]);
 
   // initialize draftBudgets when rows change
@@ -170,8 +169,7 @@ export default function CategorySpending({ startDate, endDate }: Props) {
 
       // upsert (insert or update) using unique (user_id, category)
       const { error } = await supabase.from("category_budgets").upsert(payload, {
-        onConflict: ["user_id", "category"],
-        returning: "representation",
+        onConflict: "user_id,category",
       });
 
       if (error) throw error;
@@ -181,9 +179,13 @@ export default function CategorySpending({ startDate, endDate }: Props) {
 
       setBudgets((refreshed as CategoryBudgetRow[]) || []);
       setEditing((prev) => ({ ...prev, [category]: false }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("saveBudget error", err);
-      setErrorMsg(err.message || "Failed saving budget");
+
+      // Pastikan err adalah instance dari Error sebelum akses .message
+      const message = err instanceof Error ? err.message : "Failed saving budget";
+
+      setErrorMsg(message);
     } finally {
       setSavingCategory(null);
     }

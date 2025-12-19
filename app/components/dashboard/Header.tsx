@@ -6,31 +6,24 @@ import Link from "next/link";
 import { Button } from "@/app/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/app/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu";
-import { Menu, User, Bell, CreditCard, PieChart, ScanLine, FileText, Settings, Home } from "lucide-react";
+import { Menu, PieChart, Home } from "lucide-react";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import LogoutButton from "@/app/components/ui/LogoutButton";
-import ReceiptModal from "../scan/ReceiptModal"; // import modal
 import ThemeSwitcher from "@/components/ui/ThemeToggle";
 
 interface HeaderProps {
   user: SupabaseUser | null;
 }
 
-// Navigation items for mobile menu
-const mobileNavItems = [{ name: "Dashboard", href: "/dashboard", icon: Home }];
-
 export default function Header({ user }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const getUserDisplayName = () => {
     if (!user) return "Guest";
-    const firstName = user.user_metadata?.first_name;
-    const lastName = user.user_metadata?.last_name;
-    const fullName = user.user_metadata?.full_name;
-    if (fullName) return fullName;
-    if (firstName && lastName) return `${firstName} ${lastName}`;
-    if (firstName) return firstName;
-    return user.email?.split("@")[0] || "User";
+
+    const { first_name, last_name, full_name } = user.user_metadata || {};
+
+    return full_name || (first_name && last_name ? `${first_name} ${last_name}` : first_name) || user.email?.split("@")[0] || "User";
   };
 
   const getUserInitial = () => {
@@ -39,19 +32,18 @@ export default function Header({ user }: HeaderProps) {
   };
 
   const getUserEmail = () => user?.email || "";
+  const mobileNavItems = [{ name: "Dashboard", href: "/dashboard", icon: Home, isButton: false }];
 
   return (
     <>
       {/* Modal */}
-      {/* {user && <ReceiptModal userId={user.id} isOpen={isScanModalOpen} onClose={() => setIsScanModalOpen(false)} />} */}
-
       <header className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-gray-900/95 dark:supports-[backdrop-filter]:bg-gray-900/60">
-        <div className=" mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
+        <div className="px-4 mx-auto sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
             {/* Left side: Logo */}
             <div className="flex items-center gap-6">
               <Link href="/dashboard" className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-purple-600">
+                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600">
                   <span className="text-lg font-bold text-white">R</span>
                 </div>
                 <div className="flex flex-col">
@@ -63,17 +55,17 @@ export default function Header({ user }: HeaderProps) {
 
             {/* Right side */}
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="hidden sm:flex relative"></Button>
+              <Button variant="ghost" size="icon" className="relative hidden sm:flex"></Button>
               <ThemeSwitcher />
 
               {/* Scan Receipt Desktop */}
 
               {/* User Dropdown */}
-              <div className="hidden md:flex items-center">
+              <div className="items-center hidden md:flex">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="flex items-center gap-3 rounded-full p-1 pl-3 pr-4 hover:bg-gray-100 dark:hover:bg-gray-800">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-purple-500">
+                    <Button variant="ghost" className="flex items-center gap-3 p-1 pl-3 pr-4 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+                      <div className="flex items-center justify-center rounded-full h-9 w-9 bg-gradient-to-r from-blue-500 to-purple-500">
                         <span className="text-sm font-semibold text-white">{getUserInitial()}</span>
                       </div>
                       <div className="flex flex-col items-start">
@@ -92,13 +84,13 @@ export default function Header({ user }: HeaderProps) {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <Link href="/dashboard" className="cursor-pointer">
-                        <PieChart className="mr-2 h-4 w-4" />
+                        <PieChart className="w-4 h-4 mr-2" />
                         Dashboard
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem className="p-0">
-                      <LogoutButton variant="ghost" size="sm" className="w-full justify-start h-9 px-2 text-red-600 hover:text-red-700 hover:bg-red-50" showIcon={true} label="Log out" />
+                      <LogoutButton variant="ghost" size="sm" className="justify-start w-full px-2 text-red-600 h-9 hover:text-red-700 hover:bg-red-50" showIcon={true} label="Log out" />
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -108,13 +100,13 @@ export default function Header({ user }: HeaderProps) {
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon" className="md:hidden">
-                    <Menu className="h-6 w-6" />
+                    <Menu className="w-6 h-6" />
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[300px] sm:w-[400px]">
                   {/* Mobile User */}
                   <div className="flex items-center gap-3 p-4 border-b">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-purple-500">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-500">
                       <span className="text-lg font-semibold text-white">{getUserInitial()}</span>
                     </div>
                     <div>
@@ -124,20 +116,20 @@ export default function Header({ user }: HeaderProps) {
                   </div>
 
                   {/* Mobile Nav */}
-                  <nav className="flex flex-col space-y-1 p-4">
+                  <nav className="flex flex-col p-4 space-y-1">
                     {mobileNavItems.map((item) => {
                       const Icon = item.icon;
                       if (item.isButton) {
                         return (
-                          <Button key={item.name} className="w-full justify-start h-12 px-3 rounded-lg" variant="ghost">
-                            <Icon className="mr-3 h-5 w-5" />
+                          <Button key={item.name} className="justify-start w-full h-12 px-3 rounded-lg" variant="ghost">
+                            <Icon className="w-5 h-5 mr-3" />
                             {item.name}
                           </Button>
                         );
                       }
                       return (
-                        <Link key={item.name} href={item.href} onClick={() => setMobileMenuOpen(false)} className="flex items-center h-12 px-3 rounded-lg text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">
-                          <Icon className="mr-3 h-5 w-5" />
+                        <Link key={item.name} href={item.href} onClick={() => setMobileMenuOpen(false)} className="flex items-center h-12 px-3 text-gray-700 rounded-lg hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">
+                          <Icon className="w-5 h-5 mr-3" />
                           {item.name}
                         </Link>
                       );
@@ -145,7 +137,7 @@ export default function Header({ user }: HeaderProps) {
                   </nav>
 
                   {/* Mobile Footer */}
-                  <div className="absolute bottom-0 left-0 right-0 border-t p-4">
+                  <div className="absolute bottom-0 left-0 right-0 p-4 border-t">
                     <div className="flex flex-col space-y-2">
                       <div className="pt-2">
                         <LogoutButton className="w-full" variant="outline" showIcon={true} label="Log out" />

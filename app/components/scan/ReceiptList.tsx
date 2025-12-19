@@ -2,11 +2,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/app/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-// import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/app/components/ui/sheet";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/app/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Edit2, Trash2, Eye, FileText, MoreVertical, Calendar, Building2, DollarSign, Tag, Filter, Search, Download, Image as ImageIcon, Copy, ChevronLeft, ChevronRight, Plus, RefreshCw, Save } from "lucide-react";
+import { Edit2, Trash2, Eye, FileText, MoreVertical, Calendar, Building2, DollarSign, Tag, Download, Image as ImageIcon, Copy, ChevronLeft, ChevronRight, Plus, RefreshCw, Save } from "lucide-react";
 import { format } from "date-fns";
 import { Receipt } from "@/app/types/receipt";
 import { formatShortNumber } from "@/lib/formatNumber";
@@ -45,8 +45,8 @@ export default function ReceiptList({ userId, startDate, endDate }: ReceiptListP
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [sortBy, setSortBy] = useState<"date" | "amount" | "created">("date");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy] = useState<"date" | "amount" | "created">("date");
+  const [sortOrder] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
@@ -163,7 +163,7 @@ export default function ReceiptList({ userId, startDate, endDate }: ReceiptListP
     });
   };
 
-  const updateLineItem = (index: number, field: keyof LineItem, value: any) => {
+  const updateLineItem = (index: number, field: keyof LineItem, value: string | number) => {
     const updatedItems = [...editForm.line_items];
     updatedItems[index] = {
       ...updatedItems[index],
@@ -184,7 +184,7 @@ export default function ReceiptList({ userId, startDate, endDate }: ReceiptListP
   };
 
   const filteredDateReceipts = receipts.filter((r) => {
-    const created = new Date(r.created_at);
+    const created = new Date(r.created_at ?? "");
     const start = startDate ? new Date(startDate) : null;
     const end = endDate ? new Date(endDate) : null;
 
@@ -194,26 +194,29 @@ export default function ReceiptList({ userId, startDate, endDate }: ReceiptListP
     return true;
   });
   const sortedReceipts = [...filteredDateReceipts].sort((a, b) => {
-    let aValue: any, bValue: any;
+    let aValue: number, bValue: number;
 
     switch (sortBy) {
       case "date":
+        // Gunakan getTime() dan pastikan fallback ke 0 jika date tidak ada
         aValue = a.date ? new Date(a.date).getTime() : 0;
         bValue = b.date ? new Date(b.date).getTime() : 0;
         break;
       case "amount":
-        aValue = a.total_amount || 0;
-        bValue = b.total_amount || 0;
+        aValue = Number(a.total_amount) || 0;
+        bValue = Number(b.total_amount) || 0;
         break;
       case "created":
-        aValue = new Date(a.created_at).getTime();
-        bValue = new Date(b.created_at).getTime();
+        aValue = a.created_at ? new Date(a.created_at).getTime() : 0;
+        bValue = b.created_at ? new Date(b.created_at).getTime() : 0;
         break;
+      default:
+        aValue = 0;
+        bValue = 0;
     }
 
     return sortOrder === "asc" ? aValue - bValue : bValue - aValue;
   });
-
   // Pagination
   const totalPages = Math.ceil(sortedReceipts.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -241,6 +244,7 @@ export default function ReceiptList({ userId, startDate, endDate }: ReceiptListP
     };
     return colors[category] || colors.Other;
   };
+  console.log(selectedReceipt);
 
   if (loading) {
     return (
@@ -306,36 +310,8 @@ export default function ReceiptList({ userId, startDate, endDate }: ReceiptListP
         <CardContent>
           <div className="flex flex-col mb-6 sm:flex-row">
             <div className="flex gap-2">
-              <Button onClick={() => exportReceiptsToExcel(filteredDateReceipts)}>Export Excel</Button>
-              <Button onClick={() => exportReceiptsToPDF(filteredDateReceipts)}>Export PDF</Button>
-
-              {/* <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="w-[180px]">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="Filter by category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={sortBy} onValueChange={(value: "date" | "amount" | "created") => setSortBy(value)}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="date">Date</SelectItem>
-                  <SelectItem value="amount">Amount</SelectItem>
-                  <SelectItem value="created">Created At</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="icon" onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}>
-                {sortOrder === "asc" ? <ChevronRight className="w-4 h-4 rotate-90" /> : <ChevronLeft className="w-4 h-4 rotate-90" />}
-              </Button> */}
+              <Button onClick={() => exportReceiptsToExcel(filteredDateReceipts as any)}>Export Excel</Button>
+              <Button onClick={() => exportReceiptsToPDF(filteredDateReceipts as any)}>Export PDF</Button>
 
               <Button variant="outline" size="icon" onClick={fetchReceipts}>
                 <RefreshCw className="w-4 h-4" />
@@ -388,8 +364,8 @@ export default function ReceiptList({ userId, startDate, endDate }: ReceiptListP
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="text-sm">{format(new Date(receipt.created_at), "MMM dd")}</span>
-                          <span className="text-xs text-muted-foreground">{format(new Date(receipt.created_at), "hh:mm a")}</span>
+                          <span className="text-sm">{receipt.created_at ? format(new Date(receipt.created_at), "MMM dd") : "N/A"}</span>
+                          <span className="text-xs text-muted-foreground">{receipt.created_at ? format(new Date(receipt.created_at), "hh:mm a") : ""}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
@@ -496,13 +472,14 @@ export default function ReceiptList({ userId, startDate, endDate }: ReceiptListP
                     <div className="space-y-2">
                       <Label>Receipt Image</Label>
 
-                      <div className="relative flex items-center justify-center w-full overflow-hidden border h-60 rounded-xl bg-muted">
-                        <img src={selectedReceipt.image_url} alt="Receipt" className="object-contain max-w-full max-h-full p-2" />
+                      {/* Container dengan tinggi tetap (h-60 atau 240px) */}
+                      <div className="relative flex items-center justify-center w-full overflow-hidden border h-80 rounded-xl bg-muted">
+                        <Image src={selectedReceipt.image_url} alt={selectedReceipt.merchant_name || "Receipt"} fill className="object-contain p-2" sizes="(max-width: 768px) 100vw, 50vw" />
                       </div>
 
                       <Button variant="outline" size="sm" className="w-full" onClick={() => window.open(selectedReceipt.image_url, "_blank")}>
                         <Download className="w-4 h-4 mr-2" />
-                        Download Image
+                        Lihat Gambar Penuh
                       </Button>
                     </div>
                   )}
@@ -556,13 +533,14 @@ export default function ReceiptList({ userId, startDate, endDate }: ReceiptListP
                       <div className="space-y-2">
                         <Label>Items ({selectedReceipt.line_items.length})</Label>
                         <div className="space-y-2">
-                          {selectedReceipt.line_items.map((item, index) => (
+                          {selectedReceipt.line_items.map((item: LineItem, index: number) => (
                             <div key={index} className="flex items-center justify-between p-3 rounded bg-muted/50">
                               <div>
                                 <p className="text-sm font-medium">{item.name}</p>
-                                {item.quantity > 1 && <p className="text-xs text-muted-foreground">Quantity: {item.quantity}</p>}
+                                {/* Gunakan optional chaining atau nullish coalescing */}
+                                {(item.quantity ?? 0) > 1 && <p className="text-xs text-muted-foreground">Quantity: {item.quantity}</p>}
                               </div>
-                              <p className="text-sm font-medium">Rp.{(item.price * (item.quantity || 1)).toLocaleString()}</p>
+                              <p className="text-sm font-medium">Rp.{((item.price || 0) * (item.quantity || 1)).toLocaleString()}</p>
                             </div>
                           ))}
                         </div>
@@ -583,11 +561,10 @@ export default function ReceiptList({ userId, startDate, endDate }: ReceiptListP
 
                     {/* Metadata */}
                     <div className="pt-4 space-y-2 border-t">
-                      <Label className="text-xs uppercase text-muted-foreground">Metadata</Label>
                       <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
                         <div>
-                          <p className="text-muted-foreground">Created</p>
-                          <p>{format(new Date(selectedReceipt.created_at), "MMM dd, yyyy hh:mm a")}</p>
+                          <p className="text-xs uppercase text-muted-foreground">Created At</p>
+                          <p className="text-sm font-medium">{selectedReceipt.created_at ? format(new Date(selectedReceipt.created_at), "MMM dd, yyyy hh:mm a") : "—"}</p>
                         </div>
                       </div>
                     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/app/components/ui/button";
-import { FilePlusCorner, User, ScanLine } from "lucide-react";
+import { FilePlusCorner, User } from "lucide-react";
 import { useState } from "react";
 import ReceiptModal from "../scan/ReceiptModal";
 import { User as SupabaseUser } from "@supabase/supabase-js";
@@ -40,28 +40,6 @@ export default function DashboardHeader({ user }: HeaderProps) {
         </div>
 
         <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-          {/* Date Range Selector */}
-          {/* <Select defaultValue="this-month">
-          <SelectTrigger className="w-[180px]">
-            <Calendar className="w-4 h-4 mr-2" />
-            <SelectValue placeholder="Select period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="this-week">This Week</SelectItem>
-            <SelectItem value="this-month">This Month</SelectItem>
-            <SelectItem value="last-month">Last Month</SelectItem>
-            <SelectItem value="this-year">This Year</SelectItem>
-            <SelectItem value="custom">Custom Range</SelectItem>
-          </SelectContent>
-        </Select> */}
-
-          {/* Search Input */}
-          {/* <div className="relative">
-          <Search className="absolute w-4 h-4 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
-          <Input placeholder="Search transactions..." className="pl-10 w-full md:w-[200px]" />
-        </div> */}
-
           {/* Action Buttons */}
           <Button onClick={handleScanClick} className="p-3 mb-2 md:hidden" size="lg">
             <FilePlusCorner className="w-5 h-5" />

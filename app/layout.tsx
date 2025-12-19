@@ -1,11 +1,7 @@
 //app/layout.tsx
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-import { Suspense } from "react";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Receipt Manager & Tracker - Kelola Keuangan dengan Mudah",
