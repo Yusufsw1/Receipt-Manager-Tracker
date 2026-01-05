@@ -53,6 +53,6 @@ src/
 The integration of Gemini AI transforms a simple tracker into a powerful financial assistant. This project demonstrates proficiency in Prompt Engineering, handling AI streaming responses, and managing cloud-based relational databases.
 
 🤝 Contact
-Yusuf - GitHub Profile
+Yusuf - https://github.com/Yusufsw1
 
 Project Link: https://github.com/Yusufsw1/Receipt-Manager-Tracker
